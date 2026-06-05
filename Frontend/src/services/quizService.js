@@ -26,15 +26,17 @@ export const generateQuiz = async (
 };
 
 export const submitQuizResults = async (
-  quizId,
-  answers
+  topic,
+  difficulty,
+  answers,
+  questions
 ) => {
-  const res = await api.post(
-    `/quiz/${quizId}/submit`,
-    {
-      answers,
-    }
-  );
+  const res = await api.post("/quiz/submit", {
+    topic,
+    difficulty,
+    answers,
+    questions,
+  });
 
   return res.data;
 };

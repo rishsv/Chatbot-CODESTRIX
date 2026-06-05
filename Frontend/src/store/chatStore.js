@@ -10,6 +10,7 @@ const starterMessages = [
   },
 ];
 
+
 export const useChatStore = create(
   persist(
     (set) => ({

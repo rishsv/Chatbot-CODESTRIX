@@ -9,6 +9,9 @@ export const useQuizStore = create(
       score: 0,
       selected: null,
       answered: false,
+
+      userAnswers: [],
+
       history: [],
 
       setQuiz: (q) =>
@@ -18,20 +21,39 @@ export const useQuizStore = create(
           score: 0,
           selected: null,
           answered: false,
+          userAnswers: [],
         }),
 
       selectAnswer: (index) =>
-        set({ selected: index }),
+        set({
+          selected: index,
+        }),
+
+      setAnswered: (value) =>
+        set({
+          answered: value,
+        }),
+
+      saveAnswer: (answer) =>
+        set((s) => ({
+          userAnswers: [
+            ...s.userAnswers,
+            answer,
+          ],
+        })),
 
       answerQuestion: (correct) =>
         set((s) => ({
-          score: s.score + (correct ? 1 : 0),
+          score:
+            s.score +
+            (correct ? 1 : 0),
           answered: true,
         })),
 
       nextQuestion: () =>
         set((s) => ({
-          currentIndex: s.currentIndex + 1,
+          currentIndex:
+            s.currentIndex + 1,
           selected: null,
           answered: false,
         })),
@@ -43,11 +65,15 @@ export const useQuizStore = create(
           score: 0,
           selected: null,
           answered: false,
+          userAnswers: [],
         }),
 
       addHistory: (entry) =>
         set((s) => ({
-          history: [entry, ...s.history].slice(0, 10),
+          history: [
+            entry,
+            ...s.history,
+          ].slice(0, 10),
         })),
     }),
     {

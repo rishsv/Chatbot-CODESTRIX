@@ -1,6 +1,11 @@
-import React, { useMemo, useState } from 'react'
-import { generateQuiz } from '../../services/quizService'
-import { useQuizStore } from '../../store/quizStore'
+import React, { useMemo, useState } from "react";
+import {
+  generateQuiz,
+  submitQuizResults,
+} from "../../services/quizService";
+import { useQuizStore } from "../../store/quizStore";
+import { useChatStore } from "../../store/chatStore";
+import { useNavigate } from "react-router-dom";
 
 const QuizBlock = () => {
   const quiz = useQuizStore((s) => s.quiz)
@@ -16,19 +21,18 @@ const QuizBlock = () => {
   const setAnswered = useQuizStore((s) => s.setAnswered)
   const resetQuiz = useQuizStore((s) => s.resetQuiz)
   const addHistory = useQuizStore((s) => s.addHistory)
+  const saveAnswer = useQuizStore((s) => s.saveAnswer);
+  const userAnswers = useQuizStore((s) => s.userAnswers);
+  const addMessage = useChatStore((s) => s.addMessage);
+  const navigate = useNavigate();
 
   const [topic, setTopic] = useState('Artificial Intelligence')
   const [loading, setLoading] = useState(false)
-
   const currentQuestion = useMemo(
     () => quiz?.questions?.[currentIndex],
     [quiz, currentIndex]
   )
-
-  const completed =
-    quiz &&
-    quiz.questions &&
-    currentIndex >= quiz.questions.length
+  console.log(currentQuestion)
 
   const startQuiz = async () => {
     if (!topic.trim() || loading) return
@@ -54,14 +58,100 @@ const QuizBlock = () => {
     }
   }
 
-  const submitAnswer = () => {
-    if (!currentQuestion || selected === null) return
 
-    const correct =
-      selected === currentQuestion.correctAnswer
+const handleNextQuestion = async () => {
 
-    answerQuestion(correct)
+  const isLastQuestion =
+    currentIndex ===
+    quiz.questions.length - 1;
+
+  if (!isLastQuestion) {
+    nextQuestion();
+    return;
   }
+
+  try {
+
+    addMessage({
+      role: "assistant",
+      text:
+        "Evaluating your quiz performance...",
+      sources: [],
+      thinking: [],
+    });
+
+    const result =
+      await submitQuizResults(
+  quiz.topic,
+  quiz.difficulty,
+  userAnswers,
+  quiz.questions
+);
+
+    addMessage({
+      role: "assistant",
+      text: `
+Quiz Evaluation
+
+Score: ${result.score}/${result.total}
+
+Accuracy: ${result.percentage.toFixed(1)}%
+
+${result.feedback}
+`,
+      sources: [],
+      thinking: [],
+    });
+    addHistory({
+  id: quiz.quizId,
+  topic: quiz.topic,
+  score: result.score,
+  total: result.total,
+  createdAt: new Date().toISOString(),
+});
+    resetQuiz();
+
+    navigate("/chat");
+
+  } catch (err) {
+
+    console.error(
+      "Quiz evaluation failed",
+      err
+    );
+  }
+};
+
+const submitAnswer = () => {
+  if (!currentQuestion || selected === null)
+    return;
+
+  const answerMap = {
+    A: 0,
+    B: 1,
+    C: 2,
+    D: 3,
+  };
+
+  const correctIndex =
+    answerMap[currentQuestion.answer];
+
+  const correct =
+    selected === correctIndex;
+
+  const indexToLetter = {
+    0: "A",
+    1: "B",
+    2: "C",
+    3: "D",
+  };
+
+  saveAnswer(
+    indexToLetter[selected]
+  );
+
+  answerQuestion(correct);
+};
 
   const finishQuiz = () => {
     if (!quiz) return
@@ -113,42 +203,6 @@ const QuizBlock = () => {
     )
   }
 
-  if (completed) {
-    return (
-      <div className="quiz-block result">
-        <span className="eyebrow">
-          Quiz Result
-        </span>
-
-        <h2>{quiz.topic}</h2>
-
-        <div className="result-stat">
-          <strong>{score}</strong>
-          <span>
-            out of {quiz.questions.length}
-          </span>
-        </div>
-
-        <div className="quiz-actions">
-          <button
-            onClick={() => {
-              finishQuiz()
-              startQuiz()
-            }}
-          >
-            Retry Quiz
-          </button>
-
-          <button
-            className="ghost"
-            onClick={finishQuiz}
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-    )
-  }
 
   if (!currentQuestion) {
     return (
@@ -185,16 +239,24 @@ const QuizBlock = () => {
             const isSelected =
               selected === index
 
-            const isCorrect =
-              answered &&
-              index ===
-                currentQuestion.correctAnswer
+            const answerMap = {
+  A: 0,
+  B: 1,
+  C: 2,
+  D: 3,
+};
 
-            const isWrong =
-              answered &&
-              isSelected &&
-              index !==
-                currentQuestion.correctAnswer
+const correctIndex =
+  answerMap[currentQuestion.answer];
+
+const isCorrect =
+  answered &&
+  index === correctIndex;
+
+const isWrong =
+  answered &&
+  isSelected &&
+  index !== correctIndex;
 
             return (
               <button
@@ -225,9 +287,12 @@ const QuizBlock = () => {
             Submit
           </button>
         ) : (
-          <button onClick={nextQuestion}>
-            Next Question
-          </button>
+          <button onClick={handleNextQuestion}>
+  {currentIndex ===
+  quiz.questions.length - 1
+    ? "Finish Quiz"
+    : "Next Question"}
+</button>
         )}
 
         <button

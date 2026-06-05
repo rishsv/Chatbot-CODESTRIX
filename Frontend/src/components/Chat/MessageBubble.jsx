@@ -22,7 +22,13 @@ const MessageBubble = ({ message }) => {
             <div className="sources-title">Sources</div>
             <ul>
               {sources.map((source) => (
-                <li key={source}>{source}</li>
+                <ul>
+  {sources.map((source, index) => (
+    <li key={`${index}-${source || "unknown"}`}>
+      {source || "Unknown source"}
+    </li>
+  ))}
+</ul>
               ))}
             </ul>
           </div>
